@@ -135,8 +135,6 @@ def generate_chain(k = 1, nwalkers = 32, steps = 10000, tf=2, cumulative_days=No
     tau : int
         Maximum autocorrelation time across all parameters, used as the
         base thinning interval.
-    samples : np.ndarray of shape (nwalkers * steps / (tf * tau), ndim)
-        Thinned and flattened posterior samples with no burn-in discarded.
     """
 
     rng = np.random.default_rng(1701)
@@ -206,6 +204,23 @@ def trace_plot(k=1, samples=None):
     plt.show()
 
 def corner_plot(k=1, samples=None):
+    """
+    Plot a corner plot of the posterior samples for the k change-point model.
+
+    Displays the 1D marginal posteriors on the diagonal with vertical lines
+    at the posterior mean (solid blue) and mean ± 1 standard deviation
+    (dashed blue). Off-diagonal panels show 2D marginal posteriors as
+    density contours. Titles show the median and 16th/84th percentile
+    credible intervals as computed by corner by default.
+
+    Parameters
+    ----------
+    k : int, optional
+        Number of change points, giving ndim = 2k+1 parameters. Default 1.
+    samples : np.ndarray of shape (nsamples, ndim)
+        Flattened posterior samples with burn-in discarded, as returned
+        by sampler.get_chain(flat=True, discard=burn_in).
+    """
     labels = [f"Change point $s_{i+1}$ (days)" for i in range(k)] + [f"Height $h_{j}$" for j in range(k+1)]
 
     means = np.mean(samples, axis=0)
@@ -234,3 +249,89 @@ def corner_plot(k=1, samples=None):
         ax.axvline(means[i] + stds[i], color="blue", linestyle="--")
 
     plt.show()
+
+
+def gr_stat(n_chains=10, cumulative_days=None):
+    """
+    Compute the Gelman-Rubin R-hat diagnostic for the k=1 change-point model
+    by running n_chains independent MCMC chains and comparing their variance.
+
+    Each chain is run independently with generate_chain using a fixed random
+    seed per chain, thinned by 2*tau to reduce autocorrelation, and flattened
+    before comparison. Chains are truncated to the shortest chain length before
+    computing R-hat.
+
+    R-hat values close to 1.0 indicate convergence across all chains. Values
+    above 1.1 suggest insufficient mixing and more steps are required.
+
+    Parameters
+    ----------
+    n_chains : int, optional
+        Number of independent chains to run. Default 10.
+    cumulative_days : array_like
+        Cumulative days on which accidents occurred, passed to generate_chain
+        and LnPost as the data argument. Must be provided.
+
+    Returns
+    -------
+    np.ndarray of shape (ndim,)
+        R-hat statistic for each of the 2k+1 parameters. Values close to
+        1.0 indicate convergence; values above 1.1 indicate poor mixing.
+    """
+    chains = []
+    for i in range(n_chains): # we want to thin and flatten 
+        sampler, mean_frac, taus, mean_tau, tau = generate_chain(steps=10000, cumulative_days=cumulative_days) 
+        chains.append(sampler.get_chain(flat=True, thin = 2*tau)) # get the samples from the output tuple of generate_chain
+
+    # Truncate to minimum length
+    min_length = min(chain.shape[0] for chain in chains)
+    chains = np.array([chain[:min_length] for chain in chains])  # (m, n, p)
+
+    m, n, p = chains.shape
+
+    chain_means = chains.mean(axis=1)           # (m, p)
+    grand_mean  = chain_means.mean(axis=0)      # (p,)
+
+    B = n / (m - 1) * np.sum((chain_means - grand_mean)**2, axis=0)  # (p,)
+    W = chains.var(axis=1, ddof=1).mean(axis=0)                       # (p,)
+
+    V_hat = (n - 1) / n * W + B / n
+    return np.sqrt(V_hat / W)                   # (p,)
+
+def gewecke(chain, first_frac=0.1, last_frac=0.5):
+    """
+    Compute the Geweke convergence diagnostic for a single MCMC chain.
+
+    Compares the means of the first and last portions of the chain using a
+    z-score. If the chain has converged, the two segments should be drawing
+    from the same distribution and the statistic should be approximately
+    standard normal, i.e. |z| < 2 for roughly 95% of converged parameters.
+
+    Parameters
+    ----------
+    chain : array_like of shape (nsteps,)
+        A 1D array of samples for a single parameter from a single chain,
+        after thinning but before or after burn-in discard.
+    first_frac : float, optional
+        Fraction of the chain to use as the first segment. Default 0.1.
+    last_frac : float, optional
+        Fraction of the chain to use as the last segment. Default 0.5.
+
+    Returns
+    -------
+    float
+        The Geweke z-score. Values with |z| < 2 are consistent with
+        convergence; |z| > 2 suggests the chain has not yet converged.
+    """
+    n = len(chain)
+    na = int(n * first_frac)
+    nb = int(n * last_frac)
+    first_part = chain[:na]
+    last_part = chain[-nb:]
+    mean_first = np.mean(first_part)
+    mean_last = np.mean(last_part)
+    var_first = np.var(first_part, ddof=1)
+    var_last = np.var(last_part, ddof=1)
+    gewecke_stat = (mean_first - mean_last) / np.sqrt(var_first/na + var_last/nb)
+    return gewecke_stat
+
