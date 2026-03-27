@@ -1,4 +1,4 @@
-from scipy.special import gammaln
+from scipy.special import gammaln, betaln
 import numpy as np
 import emcee
 import matplotlib.pyplot as plt
@@ -377,13 +377,13 @@ def savage_dickey(samples):
     s1_posterior_at_zero = kde_s1(0)[0]
     s1_posterior_at_L = kde_s1(40550)[0]
 
-    # KDE on h0 and h1 for the 2D histogram
-    xy = np.vstack([samples[:, 1], samples[:, 2]])
-    kde2d = gaussian_kde(xy)
-    grid_x = np.linspace(0, 0.015, 100)
-    grid_y = np.linspace(0, 0.015, 100)
-    xx, yy = np.meshgrid(grid_x, grid_y)
-    zz = kde2d(np.vstack([xx.ravel(), yy.ravel()])).reshape(xx.shape)
+    # The prior on s1
+    x = np.linspace(0, 40550, 40550)
+    L = 40550
+    alpha = np.ones(2) * 2
+    log_B = betaln(*alpha)
+    B = np.exp(log_B)
+    pi = 1 / ((L ** 3) *  B) * (x * (L-x))
 
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))
 
@@ -394,7 +394,7 @@ def savage_dickey(samples):
                      density=False,
                      range=[[0, 0.015], [0, 0.015]])
     
-    ax[0].contour(xx, yy, zz, levels=6, colors='pink', linewidths=0.8, alpha=0.7)
+
 
     plt.colorbar(h[3], ax=ax[0], label='Counts')
     ax[0].plot([0, 0.015], [0, 0.015], 'r--', label='$h_1 = h_0$ manifold', zorder=5)
@@ -408,13 +408,14 @@ def savage_dickey(samples):
     # Panel 2: s1 marginal posterior
     ax[1].hist(samples[:, 0], bins=50, density=True)
     ax[1].set_xlabel('Change point $s_1$ (days)')
-    ax[1].set_title('Posterior of change point $s_1$')
+    ax[1].set_title('Marginal of change point $s_1$')
     ax[1].axvline(0, color='red', linestyle='--', label='$M_0 = M_1$')
     ax[1].axvline(40550, color='red', linestyle='--')
     ax[1].set_xlim(-10, 40600)
     ax[1].plot(s1_range, kde_s1_vals, 'b-', label='Posterior KDE')
     ax[1].scatter([0, 40550], [s1_posterior_at_zero, s1_posterior_at_L], color='black', zorder=5,
                   label=f'Posterior KDE at 0 and L = {s1_posterior_at_zero:.1f}, {s1_posterior_at_L:.1f}', marker='x')
+    ax[1].plot(x, pi, label='Prior PDF of $s_1$', color='orange')
     ax[1].legend()
 
     # Panel 3: delta posterior with KDE
