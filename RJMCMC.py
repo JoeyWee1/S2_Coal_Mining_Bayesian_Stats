@@ -338,7 +338,7 @@ class RJMCMC:
 
         # choose new position
         s_star = np.random.uniform(low=0.0, high=self.duration)
-        idx = np.argmax(s_star<change_points)
+        idx = np.argmax(s_star<change_points) # finding the bin into which the new proposed change point falls 
         s_j = change_points[idx-1] if idx>0 else 0.0
         s_jplus1 = change_points[idx] 
         proposed_change_points = np.sort(np.hstack((state[0:k], s_star)))
@@ -363,7 +363,13 @@ class RJMCMC:
         
         # log prior ratio
         # TO DO: implement log prior ratio term for the birth move
-        log_prior_ratio = 0.0
+        # log_prior_ratio = 0.0
+        log_prior_ratio = np.log(self.prior_k.pmf(k+1)/self.prior_k.pmf(k)) + \
+                            np.log(2 * (k+1) * (2*k +3) / (self.duration**2)) + \
+                            np.log(s_star-s_j) + np.log(s_jplus1-s_star) - np.log(s_jplus1-s_j) + \
+                            np.log(self.beta ** self.alpha) - gammaln(self.alpha) +\
+                            ((self.alpha -1) * (np.log(h_j_prime) + np.log(h_jplus1_prime) - np.log(h_j))) + \
+                            -1 * self.beta * (h_j_prime + h_jplus1_prime - h_j) 
 
         # log proposal ratio
         bk = self.c * min(1, self.prior_k.pmf(k+1)/self.prior_k.pmf(k))
@@ -435,7 +441,13 @@ class RJMCMC:
         
         # log prior ratio
         # TO DO: implement log prior ratio term for the death move
-        log_prior_ratio = 0.0
+        # log_prior_ratio = 0.0
+        log_prior_ratio = np.log(self.prior_k.pmf(k-1)/self.prior_k.pmf(k)) + \
+                  np.log(self.duration**2 / (2 * k * (2*k + 1))) + \
+                  np.log(s_jplus1 - s_jminus1) - np.log(s_j - s_jminus1) - np.log(s_jplus1 - s_j) + \
+                  gammaln(self.alpha) - np.log(self.beta ** self.alpha) + \
+                  ((self.alpha - 1) * (logh_j_prime - logh_j - logh_jplus1)) + \
+                  -1 * self.beta * (np.exp(logh_j_prime) - poisson_rates[j-1] - poisson_rates[j])
 
         # log proposal ratio
         bkminus1 = self.c * min(1, self.prior_k.pmf(k)/self.prior_k.pmf(k-1)) 
