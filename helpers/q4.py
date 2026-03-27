@@ -1,9 +1,10 @@
-from scipy.special import gammaln, betaln
 import numpy as np
 import emcee
 import matplotlib.pyplot as plt
+import dynesty
 import corner
-from scipy.stats import gaussian_kde
+from scipy.stats import gaussian_kde, beta, gamma
+from scipy.special import gammaln, betaln
 
 def LnPost(theta, data):
     """
@@ -431,3 +432,93 @@ def savage_dickey(samples):
     plt.tight_layout()
     plt.show()
 
+#----------------------------------------
+# Nested Sampling helper functions
+#----------------------------------------
+
+def dynesty_ln_Likelihood(theta, data=None):
+    """
+    Compute the log-likelihood for the inhomogeneous Poisson process under
+    model M_k, formatted for use with the dynesty nested sampling package.
+
+    Identical in calculation to LnPost but returns only the log-likelihood
+    without the log-prior contribution, as dynesty handles the prior
+    separately via the prior transform function.
+
+    Parameters
+    ----------
+    theta : array_like of shape (2k+1,)
+        Model parameters: first k entries are the gaps between consecutive
+        change points, followed by k+1 heights h_0, h_1, ..., h_k. The
+        number of change points k is inferred from len(theta) as
+        k = (len(theta) - 1) // 2.
+    data : array_like, optional
+        Cumulative days on which accidents occurred, i.e. the absolute
+        times y_i of each of the N accidents within [0, L=40550].
+
+    Returns
+    -------
+    float
+        The log-likelihood ln L(data | theta, M_k), or -inf if any gap
+        or height is non-positive.
+    """
+    k = int((len(theta) - 1) / 2)
+    gaps = theta[0:k]
+    heights = theta[k:]
+
+    # final gap 
+    final_gap = 40550 - np.sum(gaps)
+    gaps = np.append(gaps, final_gap)
+
+    # safety
+    if np.any(gaps <= 0):
+        return -np.inf
+    if np.any(heights <= 0):
+        return -np.inf
+
+    # reconstruct change points
+    change_points = np.cumsum(gaps[:-1])
+    edges = np.concatenate([[0], change_points, [40550]])
+    seg_lengths = np.diff(edges)
+
+    # count data in each segment
+    counts = np.zeros(k + 1, dtype=int)
+    for j in range(k + 1):
+        left = edges[j]
+        right = edges[j + 1]
+        counts[j] = np.sum((data > left) & (data < right))
+    
+    # print(f"theta: {len(theta)}, counts: {len(counts)}, seg_lengths: {len(seg_lengths)}, heights: {len(heights)}")
+    LnL = np.sum(counts * np.log(heights) - heights * seg_lengths)
+    return LnL
+
+def dynesty_prior_transform(u):
+    """
+    Transform unit hypercube samples to the prior for the k=1 change-point
+    model M_1, as required by dynesty's nested sampling interface.
+
+    Dynesty samples uniformly from the unit hypercube u in [0,1]^ndim and
+    passes each point to this function to map it to the physical parameter
+    space. The transform must be the inverse CDF (percent point function)
+    of each parameter's marginal prior.
+
+    The parameter vector is [gap, h0, h1] where:
+        - gap ~ Beta(2, 2) scaled to [0, L=40550]: the even-numbered order
+          statistics prior for k=1 reduces to a single Beta(2,2) on [0,L].
+        - h0, h1 ~ Gamma(alpha=2, beta=200): the height prior.
+
+    Parameters
+    ----------
+    u : array_like of shape (3,)
+        Unit hypercube sample with u[0] for the gap and u[1:] for the
+        heights, each drawn uniformly from [0, 1] by dynesty.
+
+    Returns
+    -------
+    np.ndarray of shape (3,)
+        Physical parameters [gap, h0, h1] transformed from the unit
+        hypercube according to the prior distributions.
+    """
+    gap_prior = [40550 * beta.ppf(u[0], 2, 2)]
+    heights_prior = gamma.ppf(u[1:], a=2, scale=1/200)
+    return np.concatenate([gap_prior, heights_prior])
