@@ -3,6 +3,7 @@ import numpy as np
 import emcee
 import matplotlib.pyplot as plt
 import corner
+from scipy.stats import gaussian_kde
 
 def LnPost(theta, data):
     """
@@ -334,4 +335,98 @@ def gewecke(chain, first_frac=0.1, last_frac=0.5):
     var_last = np.var(last_part, ddof=1)
     gewecke_stat = (mean_first - mean_last) / np.sqrt(var_first/na + var_last/nb)
     return gewecke_stat
+
+def savage_dickey(samples):
+    """
+    Plot three diagnostic panels for the Savage-Dickey density ratio analysis
+    of the k=1 change-point model M_1 against the constant rate model M_0.
+
+    The Savage-Dickey ratio estimates the Bayes factor Z_0/Z_1 as the ratio
+    of the posterior to prior density of delta = h1 - h0 at delta = 0.
+    The difficulty is that the posterior is concentrated far from zero,
+    making the KDE estimate at delta=0 unreliable with finite samples.
+
+    Panels
+    ------
+    1 : 2D histogram of h0 vs h1 with the h1=h0 line overlaid. Points below
+        the diagonal indicate h1 < h0, i.e. the rate decreased after s1.
+    2 : Marginal posterior of the change point s1 over the full observation
+        period [0, L=40550] days.
+    3 : Posterior of delta = h1 - h0 with KDE overlay and prior density at
+        delta=0 marked, illustrating the difficulty of the Savage-Dickey
+        approach when the posterior has negligible support at delta=0.
+
+    Parameters
+    ----------
+    samples : np.ndarray of shape (nsamples, 3)
+        Flattened posterior samples with columns [s1, h0, h1], with
+        burn-in discarded.
+    """
+    delta = samples[:, 2] - samples[:, 1]
+
+    # KDE on delta
+    kde = gaussian_kde(delta)
+    delta_range = np.linspace(delta.min(), delta.max(), 1000)
+    kde_vals = kde(delta_range)
+    posterior_at_zero = kde(0)[0]
+
+    # KDE on s1 for the second panel
+    kde_s1 = gaussian_kde(samples[:, 0])
+    s1_range = np.linspace(0, 40550, 1000)
+    kde_s1_vals = kde_s1(s1_range)
+    s1_posterior_at_zero = kde_s1(0)[0]
+    s1_posterior_at_L = kde_s1(40550)[0]
+
+    # KDE on h0 and h1 for the 2D histogram
+    xy = np.vstack([samples[:, 1], samples[:, 2]])
+    kde2d = gaussian_kde(xy)
+    grid_x = np.linspace(0, 0.015, 100)
+    grid_y = np.linspace(0, 0.015, 100)
+    xx, yy = np.meshgrid(grid_x, grid_y)
+    zz = kde2d(np.vstack([xx.ravel(), yy.ravel()])).reshape(xx.shape)
+
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+
+    # Panel 1: h0 vs h1 2D histogram
+    h = ax[0].hist2d(samples[:, 1], samples[:, 2],
+                     bins=100,
+                     cmap='Blues',
+                     density=False,
+                     range=[[0, 0.015], [0, 0.015]])
+    
+    ax[0].contour(xx, yy, zz, levels=6, colors='pink', linewidths=0.8, alpha=0.7)
+
+    plt.colorbar(h[3], ax=ax[0], label='Counts')
+    ax[0].plot([0, 0.015], [0, 0.015], 'r--', label='$h_1 = h_0$ manifold', zorder=5)
+    ax[0].set_xlabel('$h_0$')
+    ax[0].set_ylabel('$h_1$')
+    ax[0].set_xlim(0, 0.015)
+    ax[0].set_ylim(0, 0.015)
+    ax[0].legend()
+    ax[0].set_title('Posterior samples in rate space')
+
+    # Panel 2: s1 marginal posterior
+    ax[1].hist(samples[:, 0], bins=50, density=True)
+    ax[1].set_xlabel('Change point $s_1$ (days)')
+    ax[1].set_title('Posterior of change point $s_1$')
+    ax[1].axvline(0, color='red', linestyle='--', label='$M_0 = M_1$')
+    ax[1].axvline(40550, color='red', linestyle='--')
+    ax[1].set_xlim(-10, 40600)
+    ax[1].plot(s1_range, kde_s1_vals, 'b-', label='Posterior KDE')
+    ax[1].scatter([0, 40550], [s1_posterior_at_zero, s1_posterior_at_L], color='black', zorder=5,
+                  label=f'Posterior KDE at 0 and L = {s1_posterior_at_zero:.1f}, {s1_posterior_at_L:.1f}', marker='x')
+    ax[1].legend()
+
+    # Panel 3: delta posterior with KDE
+    ax[2].hist(delta, bins=50, density=True, alpha=0.4, label='Histogram')
+    ax[2].plot(delta_range, kde_vals, 'b-', label='Posterior KDE')
+    ax[2].axvline(0, color='red', linestyle='--', label='$\\delta = 0$')
+    ax[2].scatter([0], [posterior_at_zero], color='black', zorder=5,
+                  label=f'Posterior KDE at 0 = {posterior_at_zero:.1f}', marker='x')
+    ax[2].set_xlabel('$\\delta = h_1 - h_0$')
+    ax[2].set_title('Density estimate near the null subspace')
+    ax[2].legend()
+
+    plt.tight_layout()
+    plt.show()
 
