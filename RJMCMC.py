@@ -217,8 +217,40 @@ class RJMCMC:
             This is used to track the acceptance fraction of the chain;
             1 if the move was accepted, 0 otherwise.
         """
-        # TO DO: implement height change move
-        raise NotImplementedError("Height change move not implemented yet.")
+        k = (len(state) - 1) // 2
+        proposed_state = deepcopy(state)
+
+        # Draw a random height to change
+        j = np.random.randint(0, k+2) # j=0,1,...,k+1
+        hs = state[k+1:]
+        h_j = hs[j]
+
+        # Propose new height
+        u = np.random.uniform(-0.5, 0.5)
+        h_j_prime = h_j * np.exp(u)
+        proposed_state[k+1+j] = h_j_prime
+
+        # LLR
+        log_like_ratio = self.log_likelihood(proposed_state) - \
+                            self.log_likelihood(state)
+        
+        # log acceptance probability
+        log_accept_prob = (
+        log_like_ratio
+        + self.alpha * np.log(h_j_prime / h_j)
+        - self.beta * (h_j_prime - h_j)
+        )
+
+        # accept or reject
+        # either accept or reject the proposed move
+        if np.log(np.random.uniform()) < log_accept_prob:
+            accept = 1
+            return proposed_state, accept
+        else:
+            accept = 0
+            return state, accept
+
+
         
     def position_change_move(self, 
                              state,
