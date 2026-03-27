@@ -1,6 +1,7 @@
 from scipy.special import gammaln
 import numpy as np
 import emcee
+import matplotlib.pyplot as plt
 
 def LnPost(theta, data):
     """
@@ -171,7 +172,17 @@ def generate_chain(k = 1, nwalkers = 32, steps = 10000, tf=2, cumulative_days=No
     print(f"Mean acceptance fraction: {mean_frac:.3f}")
     print(f"Mean autocorrelation time: {mean_tau:.2f} steps")
 
-    samples = sampler.get_chain(thin=tf*tau, flat=True) # shape (nwalkers * nsteps/thin, ndim) # review discard by plotting
+    return sampler, mean_frac, taus, mean_tau, tau
 
-    return sampler, mean_frac, taus, mean_tau, tau, samples
+def trace_plot(k=1, samples=None):
+    print(f"There are {k} change points")
+    ndim = 2*k + 1
+    fig, ax = plt.subplots(ndim, figsize=(10, 7), sharex=True)
+    labels = [f"Change point s{i+1}" for i in range(k)] + [f"Height h{j}" for j in range(k+1)]
 
+    for i in range(ndim):
+        ax[i].plot(samples[:500,  :, i], 'k', alpha=0.3)
+        ax[i].set_ylabel(labels[i])
+
+    ax[-1].set_xlabel("step")
+    plt.show()
