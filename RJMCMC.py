@@ -71,7 +71,7 @@ class RJMCMC:
         self.num_accidents = 1 + N_minus_1
         
         # Accident times, y_i
-        self.accident_times = np.hstack([0, np.cumsum(self.intervals)])
+        self.accident_times = np.hstack([0, np.cumsum(self.intervals)]) #the position of the accidents in time
 
         # Total duration, L
         self.duration = np.sum(self.intervals)
