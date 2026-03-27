@@ -2,6 +2,7 @@ from scipy.special import gammaln
 import numpy as np
 import emcee
 import matplotlib.pyplot as plt
+import corner
 
 def LnPost(theta, data):
     """
@@ -175,6 +176,23 @@ def generate_chain(k = 1, nwalkers = 32, steps = 10000, tf=2, cumulative_days=No
     return sampler, mean_frac, taus, mean_tau, tau
 
 def trace_plot(k=1, samples=None):
+    """
+    Plot trace plots for all 2k+1 parameters of the k change-point model.
+
+    Displays the first 500 thinned steps (or all steps if fewer than 500
+    are available) for each walker, overlaid in black with transparency.
+    All walkers are plotted on the same axis to visually assess mixing and
+    convergence — a well-mixed chain shows walkers overlapping throughout
+    with no visible drift or separation.
+
+    Parameters
+    ----------
+    k : int, optional
+        Number of change points, giving ndim = 2k+1 parameters. Default 1.
+    samples : np.ndarray of shape (nsteps, nwalkers, ndim)
+        Thinned posterior samples with walkers kept separate, as returned
+        by generate_chain with flat=False.
+    """
     print(f"There are {k} change points")
     ndim = 2*k + 1
     fig, ax = plt.subplots(ndim, figsize=(10, 7), sharex=True)
@@ -185,4 +203,34 @@ def trace_plot(k=1, samples=None):
         ax[i].set_ylabel(labels[i])
 
     ax[-1].set_xlabel("step")
+    plt.show()
+
+def corner_plot(k=1, samples=None):
+    labels = [f"Change point $s_{i+1}$ (days)" for i in range(k)] + [f"Height $h_{j}$" for j in range(k+1)]
+
+    means = np.mean(samples, axis=0)
+    stds = np.std(samples, axis=0)
+
+    # For each parameter, pass [mean-std, mean, mean+std] as the truths-equivalent lines
+    quantiles_per_param = [
+        [means[i] - stds[i], means[i], means[i] + stds[i]]
+        for i in range(2*k + 1)
+    ]
+
+    fig = corner.corner(
+        samples,
+        labels=labels,
+        show_titles=True,
+        title_fmt=".4f",
+        truths=means,           # plots vertical line at mean
+        truth_color="blue",
+    )
+    axes = np.array(fig.axes).reshape((2*k+1, 2*k+1))
+
+    for i in range(2*k + 1):
+        ax = axes[i, i]
+        ax.axvline(means[i], color="blue", label="mean")
+        ax.axvline(means[i] - stds[i], color="blue", linestyle="--", label=r"$\pm 1\sigma$")
+        ax.axvline(means[i] + stds[i], color="blue", linestyle="--")
+
     plt.show()
