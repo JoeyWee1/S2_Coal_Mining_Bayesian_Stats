@@ -90,9 +90,52 @@ def LnPost(theta, data):
     return LnPost
 
 
+def generate_chain(k = 1, nwalkers = 32, steps = 10000, tf=2, cumulative_days=None):
+    """
+    Run an emcee ensemble MCMC sampler for the k change-point model M_k.
 
+    Initialises nwalkers walkers by drawing gaps from a symmetric Dirichlet
+    distribution scaled to L=40550 and heights from the Gamma(1, 200) prior.
+    The chain is thinned by tf * max(autocorrelation times) across all
+    parameters to reduce sample correlation.
 
-def generate_chain(k = 1, nwalkers = 32, steps = 10000, tf=2, cumulative_days):
+    Note: the returned samples have discard=0, meaning no burn-in steps are
+    removed. The caller is responsible for inspecting the trace plot and
+    discarding the initial equilibration period before using the samples for
+    inference.
+
+    Parameters
+    ----------
+    k : int, optional
+        Number of change points, giving ndim = 2k+1 parameters. Default 1.
+    nwalkers : int, optional
+        Number of ensemble walkers. Must be at least 2*ndim. Default 32.
+    steps : int, optional
+        Number of MCMC steps per walker. Default 10000.
+    tf : int, optional
+        Thinning factor multiplier applied to the maximum autocorrelation
+        time, i.e. samples are thinned by tf * max(taus). Default 2.
+    cumulative_days : array_like
+        Cumulative days on which accidents occurred, passed to LnPost
+        as the data argument. Must be provided.
+
+    Returns
+    -------
+    sampler : emcee.EnsembleSampler
+        The completed sampler object, containing the full unthinned chain.
+    mean_frac : float
+        Mean acceptance fraction across all walkers. Healthy values are
+        typically in the range 0.2 to 0.5.
+    taus : np.ndarray of shape (ndim,)
+        Estimated autocorrelation time for each parameter dimension.
+    mean_tau : float
+        Mean autocorrelation time across all parameters.
+    tau : int
+        Maximum autocorrelation time across all parameters, used as the
+        base thinning interval.
+    samples : np.ndarray of shape (nwalkers * steps / (tf * tau), ndim)
+        Thinned and flattened posterior samples with no burn-in discarded.
+    """
 
     rng = np.random.default_rng(1701)
 
