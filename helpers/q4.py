@@ -178,7 +178,7 @@ def trace_plot(k=1, samples=None):
     print(f"There are {k} change points")
     ndim = 2*k + 1
     fig, ax = plt.subplots(ndim, figsize=(10, 7), sharex=True)
-    labels = [f"Change point s{i+1}" for i in range(k)] + [f"Height h{j}" for j in range(k+1)]
+    labels =  [f"Change point $s_{i+1}$ (days)" for i in range(k)] + [f"Height $h_{j}$" for j in range(k+1)]
 
     for i in range(ndim):
         ax[i].plot(samples[:500,  :, i], 'k', alpha=0.3)
