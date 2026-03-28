@@ -221,14 +221,14 @@ class RJMCMC:
         proposed_state = deepcopy(state)
 
         # Draw a random height to change
-        j = np.random.randint(0, k+2) # j=0,1,...,k+1
-        hs = state[k+1:]
+        j = np.random.randint(0, k+1) # j=0,1,...,k+1
+        hs = state[k:]
         h_j = hs[j]
 
         # Propose new height
         u = np.random.uniform(-0.5, 0.5)
         h_j_prime = h_j * np.exp(u)
-        proposed_state[k+1+j] = h_j_prime
+        proposed_state[k+j] = h_j_prime
 
         # LLR
         log_like_ratio = self.log_likelihood(proposed_state) - \
