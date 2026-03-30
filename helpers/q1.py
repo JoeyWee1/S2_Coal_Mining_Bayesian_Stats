@@ -55,11 +55,11 @@ def plot_cumulative_accidents(cumulative_accidents: list, mean_rate: float, save
     savefig : str or None, optional
         File path to save the figure. If None, the figure is not saved.
     """
-    plt.figure(figsize=(7, 4))
+    plt.figure(figsize=(8, 4.5), dpi=150)
     plt.plot(range(40550), cumulative_accidents, label="Cumulative Accidents")
-    plt.plot(range(40550), mean_rate * np.arange(40550), linestyle="--", label="Mean Rate")
+    plt.plot(range(40550), mean_rate * np.arange(40550), linestyle="--", label=f"Mean Rate {mean_rate:.5f} per day = {mean_rate*365:.2f} per year")
     plt.title("Cumulative Number of Accidents Over Time")
-    plt.xlabel("Time")
+    plt.xlabel("Time (Days since first accident)")
     plt.ylabel("Number of accidents")
     plt.legend()
     if savefig:

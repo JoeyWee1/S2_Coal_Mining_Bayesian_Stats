@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.ticker import MultipleLocator
+from matplotlib.ticker import MultipleLocator, ScalarFormatter
 from collections import Counter
 from tqdm import tqdm
 
@@ -40,7 +40,7 @@ def autocorrelation_time(rjmcmc):
     return tau
 
 
-def k_post_trace(rjmcmc, discard):
+def k_post_trace(rjmcmc, discard, savefig="plots/k_post_trace.png"):
     r"""
     Plot the trace of the model index k and its posterior distribution.
 
@@ -67,26 +67,31 @@ def k_post_trace(rjmcmc, discard):
 
     discard = int(discard)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True, gridspec_kw={'width_ratios': [2.5, 1]}, figsize=(10, 4))
+    fig, ax = plt.subplots(1, 2, sharey=True, gridspec_kw={'width_ratios': [2.5, 1]}, figsize=(10, 4), dpi=150)
 
-    ax1.plot(ks, 'k')
-    ax1.set_xlabel('Iteration')
-    ax1.set_ylabel('Model with k change points')
-    ax1.yaxis.set_major_locator(MultipleLocator(5))
-    ax1.yaxis.set_minor_locator(MultipleLocator(1))
-    ax1.set_ylim(0, 30)
-    ax1.axvline(discard, linestyle = "--", color='red', label = f"Burn-in discard:{discard:1d}")
-    # ax1.grid(which='both', axis='y', linestyle='--', linewidth=0.5)
-    ax1.set_title('Trace plot of the number of change points k')
-    ax1.legend()
+    ax[0].plot(ks)
+    ax[0].set_xlabel('Iteration')
+    ax[0].set_ylabel('Model with k change points')
+    ax[0].xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+    ax[0].ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
+    ax[0].yaxis.set_major_locator(MultipleLocator(5))
+    ax[0].yaxis.set_minor_locator(MultipleLocator(1))
+    ax[0].set_ylim(0, 15)
+    ax[0].axvline(discard, linestyle = "--", color='black', label = f"Burn-in discard:{discard:1d}")
+    ax[0].axhline(k_map, color='red', linestyle='--', label=f'MAP k={k_map}')
+    # ax[0].grid(which='both', axis='y', linestyle='--', linewidth=0.5)
+    ax[0].set_title('Trace plot of the number of change points k')
+    ax[0].legend()
 
-    ax2.hist(ks[discard:], bins=np.arange(-0.5, 31.5, 1), orientation='horizontal', density=True, color='white', edgecolor='black')
-    ax2.set_xlabel('Posterior probability')
-    ax2.set_title('Posterior over k')
-    ax2.axhline(k_map, color='red', linestyle='--', label=f'MAP k={k_map}')
-    ax2.legend()
+    ax[1].hist(ks[discard:], bins=np.arange(-0.5, 15.5, 1), orientation='horizontal', density=True, )
+    ax[1].set_xlabel('Posterior probability')
+    ax[1].set_title('Posterior over k')
+    ax[1].axhline(k_map, color='red', linestyle='--', label=f'MAP k={k_map}')
+
 
     plt.tight_layout()
+    if savefig:
+        fig.savefig(savefig)
     plt.show()
 
     return k_map

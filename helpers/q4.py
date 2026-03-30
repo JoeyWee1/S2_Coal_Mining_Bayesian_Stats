@@ -5,6 +5,7 @@ import dynesty
 import corner
 from scipy.stats import gaussian_kde, beta, gamma
 from scipy.special import gammaln, betaln
+from matplotlib.ticker import ScalarFormatter
 
 def LnPost(theta, data):
     """
@@ -205,7 +206,7 @@ def trace_plot(k=1, samples=None):
     ax[-1].set_xlabel("step")
     plt.show()
 
-def corner_plot(k=1, samples=None):
+def corner_plot(k=1, samples=None, savefig="plots/corner_plot.png"):
     """
     Plot a corner plot of the posterior samples for the k change-point model.
 
@@ -237,19 +238,39 @@ def corner_plot(k=1, samples=None):
     fig = corner.corner(
         samples,
         labels=labels,
-        show_titles=True,
+        show_titles=False,
         title_fmt=".4f",
         truths=means,           # plots vertical line at mean
         truth_color="blue",
+        fig=plt.figure(figsize=(6, 6)),
+        dpi = 150
     )
+
+    for ax in fig.axes:
+        ax.tick_params(axis='both', labelsize=7)
+
+    # fig.suptitle(f"Corner plot of posterior samples for k={k} change points", fontsize=16,y=1.02)
     axes = np.array(fig.axes).reshape((2*k+1, 2*k+1))
 
     for i in range(2*k + 1):
         ax = axes[i, i]
+        med = np.percentile(samples[:, i], 50)
+        lo = med - np.percentile(samples[:, i], 16)
+        hi = np.percentile(samples[:, i], 84) - med
+
+        if i < k:
+            title = f"$s_{{{i+1}}}$ = {med:.0f}$^{{+{hi:.0f}}}_{{-{lo:.0f}}}$ days"
+        else:
+            j = i - k
+            title = f"$h_{{{j}}}$ = {med:.4f}$^{{+{hi:.4f}}}_{{-{lo:.4f}}}$"
+
+        ax.set_title(title, fontsize=10)
         ax.axvline(means[i], color="blue", label="mean")
         ax.axvline(means[i] - stds[i], color="blue", linestyle="--", label=r"$\pm 1\sigma$")
         ax.axvline(means[i] + stds[i], color="blue", linestyle="--")
 
+    if savefig:
+        fig.savefig(savefig)
     plt.show()
 
 
@@ -337,7 +358,7 @@ def gewecke(chain, first_frac=0.1, last_frac=0.5):
     gewecke_stat = (mean_first - mean_last) / np.sqrt(var_first/na + var_last/nb)
     return gewecke_stat
 
-def savage_dickey(samples):
+def savage_dickey(samples, savefig="plots/savage_dickey.png"):
     """
     Plot three diagnostic panels for the Savage-Dickey density ratio analysis
     of the k=1 change-point model M_1 against the constant rate model M_0.
@@ -386,7 +407,7 @@ def savage_dickey(samples):
     B = np.exp(log_B)
     pi = 1 / ((L ** 3) *  B) * (x * (L-x))
 
-    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5), dpi=150)
 
     # Panel 1: h0 vs h1 2D histogram
     h = ax[0].hist2d(samples[:, 1], samples[:, 2],
@@ -403,33 +424,40 @@ def savage_dickey(samples):
     ax[0].set_ylabel('$h_1$')
     ax[0].set_xlim(0, 0.015)
     ax[0].set_ylim(0, 0.015)
+    ax[0].xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+    ax[0].ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
     ax[0].legend()
     ax[0].set_title('Posterior samples in rate space')
 
     # Panel 2: s1 marginal posterior
-    ax[1].hist(samples[:, 0], bins=50, density=True)
-    ax[1].set_xlabel('Change point $s_1$ (days)')
-    ax[1].set_title('Marginal of change point $s_1$')
-    ax[1].axvline(0, color='red', linestyle='--', label='$M_0 = M_1$')
-    ax[1].axvline(40550, color='red', linestyle='--')
-    ax[1].set_xlim(-10, 40600)
-    ax[1].plot(s1_range, kde_s1_vals, 'b-', label='Posterior KDE')
-    ax[1].scatter([0, 40550], [s1_posterior_at_zero, s1_posterior_at_L], color='black', zorder=5,
-                  label=f'Posterior KDE at 0 and L = {s1_posterior_at_zero:.1f}, {s1_posterior_at_L:.1f}', marker='x')
-    ax[1].plot(x, pi, label='Prior PDF of $s_1$', color='orange')
-    ax[1].legend()
-
-    # Panel 3: delta posterior with KDE
-    ax[2].hist(delta, bins=50, density=True, alpha=0.4, label='Histogram')
-    ax[2].plot(delta_range, kde_vals, 'b-', label='Posterior KDE')
-    ax[2].axvline(0, color='red', linestyle='--', label='$\\delta = 0$')
-    ax[2].scatter([0], [posterior_at_zero], color='black', zorder=5,
-                  label=f'Posterior KDE at 0 = {posterior_at_zero:.1f}', marker='x')
-    ax[2].set_xlabel('$\\delta = h_1 - h_0$')
-    ax[2].set_title('Density estimate near the null subspace')
+    ax[2].hist(samples[:, 0], bins=50, density=True)
+    ax[2].set_xlabel('Change point $s_1$ (days)')
+    ax[2].set_title('Marginal posterior of change point $s_1$')
+    ax[2].axvline(0, color='red', linestyle='--', label='$M_0 = M_1$')
+    ax[2].axvline(40550, color='red', linestyle='--')
+    ax[2].set_xlim(-10, 40600)
+    ax[2].xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+    ax[2].ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
+    ax[2].plot(s1_range, kde_s1_vals, 'b-', label='Posterior KDE')
+    ax[2].scatter([0, 40550], [s1_posterior_at_zero, s1_posterior_at_L], color='black', zorder=5,
+              label=f'Posterior KDE at 0 and L = {s1_posterior_at_zero:.1f}, {s1_posterior_at_L:.1f}', marker='x')
+    
+    ax[2].plot(x, pi, label='Prior PDF of $s_1$', color='orange')
     ax[2].legend()
 
+    # Panel 3: delta posterior with KDE
+    ax[1].hist(delta, bins=50, density=True, alpha=0.4, label='Histogram')
+    ax[1].plot(delta_range, kde_vals, 'b-', label='Posterior KDE')
+    ax[1].axvline(0, color='red', linestyle='--', label='$\\delta = 0$')
+    ax[1].scatter([0], [posterior_at_zero], color='black', zorder=5,
+                  label=f'Posterior KDE at 0 = {posterior_at_zero:.1f}', marker='x')
+    ax[1].set_xlabel('$\\delta = h_1 - h_0$')
+    ax[1].set_title('Densities near the $h_1 = h_0$ manifold')
+    ax[1].legend()
+
     plt.tight_layout()
+    if savefig:
+        fig.savefig(savefig)
     plt.show()
 
 #----------------------------------------

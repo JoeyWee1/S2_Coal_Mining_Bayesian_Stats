@@ -64,7 +64,7 @@ def find_z0():
     m0_lnz = m + np.log(unscaled_z)
     return m0_lnz
 
-def plot_prior_post(m0_lnz):
+def plot_prior_post(m0_lnz, savefig="plots/prior_posterior.png"):
     """
     Plot the prior and normalised posterior for the constant rate model M0.
 
@@ -102,17 +102,20 @@ def plot_prior_post(m0_lnz):
 
 
     # Plot
-    fig, ax = plt.subplots(1, 1, figsize=(10, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(10, 5), dpi=150)
     ax.plot(h0_vals, pi_vals,
-            label=rf"Prior $\pi(h_0|M_0)$ = $\Gamma(\alpha = 1, \beta= 200$")
+            label=rf"Prior $\pi(h_0|M_0)$ = $\Gamma(\alpha = 1, \beta= 200)$")
     ax.plot(h0_vals, post_vals,
-            label=rf"Posterior $p(h_0|d, M_0)$ = $\Gamma(\alpha={alpha_prime}, \beta={beta_prime})$")
+            label=rf"Posterior $P(h_0|D, M_0)$ = $\Gamma(\alpha={alpha_prime}, \beta={beta_prime})$")
     ax.axvline(post_mean, color="red", linestyle="-",
                label=f"Posterior mean = {post_mean:.6f}")
     ax.axvspan(lower, upper, alpha=0.2, color='orange', label="95% credible interval")
-    ax.set_xlabel("h_0")
-    ax.set_title("Constant Rate Prior vs Posterior")
+    ax.set_xlabel("$h_0$ (accidents per day)")
+    ax.set_ylabel("Density")
+    ax.set_title("Constant Rate: Prior vs Posterior")
     ax.legend()
+    if savefig:
+        fig.savefig(savefig)
     fig.show()
 
 
