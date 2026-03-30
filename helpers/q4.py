@@ -1,3 +1,5 @@
+from datetime import date
+
 import numpy as np
 import emcee
 import matplotlib.pyplot as plt
@@ -430,14 +432,30 @@ def savage_dickey(samples, savefig="plots/savage_dickey.png"):
     ax[0].set_title('Posterior samples in rate space')
 
     # Panel 2: s1 marginal posterior
+    start_date = date(1851, 3, 15)
+    tick_years = range(1860, 1970, 10)
+    tick_positions = [(date(y, 1, 1) - start_date).days for y in tick_years]
+    tick_labels = [str(y) for y in tick_years]
+
+    ax[2].set_xticks(tick_positions)
+    ax[2].set_xticklabels(tick_labels, rotation=45)
+    ax[2].set_xlabel('Change point $s_1$ (year)')
+    ax[2].set_xlim(-10, 40600)
+
     ax[2].hist(samples[:, 0], bins=50, density=True)
     ax[2].set_xlabel('Change point $s_1$ (days)')
     ax[2].set_title('Marginal posterior of change point $s_1$')
     ax[2].axvline(0, color='red', linestyle='--', label='$M_0 = M_1$')
     ax[2].axvline(40550, color='red', linestyle='--')
+    # ax[2].set_xlim(-10, 40600)
+    # ax[2].xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+    # ax[2].ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
+
+    ax[2].set_xticks(tick_positions)
+    ax[2].set_xticklabels(tick_labels, rotation=45)
+    ax[2].set_xlabel('Change point $s_1$ (year)')
     ax[2].set_xlim(-10, 40600)
-    ax[2].xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
-    ax[2].ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
+
     ax[2].plot(s1_range, kde_s1_vals, 'b-', label='Posterior KDE')
     ax[2].scatter([0, 40550], [s1_posterior_at_zero, s1_posterior_at_L], color='black', zorder=5,
               label=f'Posterior KDE at 0 and L = {s1_posterior_at_zero:.1f}, {s1_posterior_at_L:.1f}', marker='x')
@@ -460,9 +478,6 @@ def savage_dickey(samples, savefig="plots/savage_dickey.png"):
         fig.savefig(savefig)
     plt.show()
 
-#----------------------------------------
-# Nested Sampling helper functions
-#----------------------------------------
 
 def dynesty_ln_Likelihood(theta, data=None):
     """
@@ -514,7 +529,7 @@ def dynesty_ln_Likelihood(theta, data=None):
     for j in range(k + 1):
         left = edges[j]
         right = edges[j + 1]
-        counts[j] = np.sum((data > left) & (data < right))
+        counts[j] = np.sum((data >= left) & (data < right))
     
     # print(f"theta: {len(theta)}, counts: {len(counts)}, seg_lengths: {len(seg_lengths)}, heights: {len(heights)}")
     LnL = np.sum(counts * np.log(heights) - heights * seg_lengths)
@@ -533,7 +548,7 @@ def dynesty_prior_transform(u):
     The parameter vector is [gap, h0, h1] where:
         - gap ~ Beta(2, 2) scaled to [0, L=40550]: the even-numbered order
           statistics prior for k=1 reduces to a single Beta(2,2) on [0,L].
-        - h0, h1 ~ Gamma(alpha=2, beta=200): the height prior.
+        - h0, h1 ~ Gamma(alpha=1, beta=200): the height prior.
 
     Parameters
     ----------
@@ -548,5 +563,5 @@ def dynesty_prior_transform(u):
         hypercube according to the prior distributions.
     """
     gap_prior = [40550 * beta.ppf(u[0], 2, 2)]
-    heights_prior = gamma.ppf(u[1:], a=2, scale=1/200)
+    heights_prior = gamma.ppf(u[1:], a=1, scale=1/200)
     return np.concatenate([gap_prior, heights_prior])

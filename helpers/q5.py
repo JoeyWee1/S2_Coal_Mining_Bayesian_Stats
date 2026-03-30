@@ -1,3 +1,5 @@
+from datetime import date
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import MultipleLocator, ScalarFormatter
@@ -97,6 +99,11 @@ def k_post_trace(rjmcmc, discard, savefig="plots/k_post_trace.png"):
     return k_map
 
 def plot_rate(rjmcmc, tau, savefig="plots/rate_v_time.png"):
+    start_date = date(1851, 3, 15)
+    tick_years = range(1850, 1970, 10)  # every 10 years
+    tick_positions = [(date(y, 1, 1) - start_date).days for y in tick_years]
+    tick_labels = [str(y) for y in tick_years]
+
     model_chain = rjmcmc.chain
     thinned_chain = model_chain[int(10*tau)::int(2*tau)] # discard 10tau and thin by 2tau
     print(f"Number of samples after discarding and thinning: {len(thinned_chain)}")
@@ -135,6 +142,7 @@ def plot_rate(rjmcmc, tau, savefig="plots/rate_v_time.png"):
     plt.fill_between(t, low_50, high_50, alpha=0.4, color='blue', label=r'50% uncertainty')
     plt.plot(t, mean_height_v_time, color = 'red', label = "Inferred mean")
     plt.xlabel("Time (days since first accident)")
+    plt.xticks(tick_positions, tick_labels, rotation=45)
     plt.ylabel("Accident rate")
     plt.title("Inferred Accident Rate")
     plt.legend()

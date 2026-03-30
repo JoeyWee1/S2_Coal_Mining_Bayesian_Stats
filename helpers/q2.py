@@ -1,3 +1,5 @@
+from datetime import date
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -209,8 +211,15 @@ def compare_gaps(k=4, samples=100000, savefig="plots/gap_comparison.png"):
 
     even_gaps = np.array(even_gaps).flatten()
     plain_gaps = np.array(plain_gaps).flatten()
+    even_gaps_years = even_gaps / 365
+    plain_gaps_years = plain_gaps / 365
     even_points = np.array(even_points)
     plain_points = np.array(plain_points)
+
+    start_date = date(1851, 3, 15)
+    tick_years = range(1850, 1970, 10)  # every 10 years
+    tick_positions = [(date(y, 1, 1) - start_date).days for y in tick_years]
+    tick_labels = [str(y) for y in tick_years]
 
     fig = plt.figure(figsize=(10, 8))
     gs = GridSpec(4, 2, figure=fig, hspace=0.6, wspace=0.3)
@@ -223,48 +232,49 @@ def compare_gaps(k=4, samples=100000, savefig="plots/gap_comparison.png"):
         ax.hist(plain_points[:, i], bins=75, alpha=0.5, label="Plain")
         ax.set_ylabel("Frequency")
         ax.legend(fontsize=7)
-        ax.set_xlim(0, 40550)
-        ax.xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
-        ax.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
+        # ax.set_xlim(0, 40550)
+        # ax.xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+        # ax.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
+        plt.xticks(tick_positions, tick_labels, rotation=45, size=7)
         if i == 3:
-            ax.set_xlabel("Change point (days since first accident)")
+            ax.set_xlabel("Change point time (year)")
 
     # Right column: gap distributions (each spanning 2 rows)
     ax_even = fig.add_subplot(gs[0:2, 1])
-    ax_even.hist(even_gaps, bins=75)
+    ax_even.hist(even_gaps_years, bins=75)
     ax_even.set_title("Combined even-stats gaps")
     ax_even.set_ylabel("Frequency")
-    ax_even.axvline(np.mean(even_gaps), color="red", linestyle="--",
-                    label=f"Mean: {np.mean(even_gaps):.1f}")
-    ax_even.axvline(np.percentile(even_gaps, 5), color="orange", linestyle=":",
-                    label=f"5th pct: {np.percentile(even_gaps, 5):.1f}")
-    ax_even.axvline(np.percentile(even_gaps, 95), color="orange", linestyle=":",
-                    label=f"95th pct: {np.percentile(even_gaps, 95):.1f}")
+    ax_even.axvline(np.mean(even_gaps_years), color="red", linestyle="--",
+                    label=f"Mean: {np.mean(even_gaps_years):.1f}")
+    ax_even.axvline(np.percentile(even_gaps_years, 5), color="orange", linestyle=":",
+                    label=f"5th pct: {np.percentile(even_gaps_years, 5):.1f}")
+    ax_even.axvline(np.percentile(even_gaps_years, 95), color="orange", linestyle=":",
+                    label=f"95th pct: {np.percentile(even_gaps_years, 95):.1f}")
     ax_even.legend(fontsize=7)
-    ax_even.xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
-    ax_even.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
+    # ax_even.xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+    # ax_even.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
 
 
     ax_plain = fig.add_subplot(gs[2:4, 1])
-    ax_plain.hist(plain_gaps, bins=75)
+    ax_plain.hist(plain_gaps_years, bins=75)
     ax_plain.set_title("Combined plain-stats gaps")
     ax_plain.set_ylabel("Frequency")
-    ax_plain.set_xlabel("Gap size (days)")
-    ax_plain.axvline(np.mean(plain_gaps), color="red", linestyle="--",
-                     label=f"Mean: {np.mean(plain_gaps):.1f}")
-    ax_plain.axvline(np.percentile(plain_gaps, 5), color="orange", linestyle=":",
-                     label=f"5th pct: {np.percentile(plain_gaps, 5):.1f}")
-    ax_plain.axvline(np.percentile(plain_gaps, 95), color="orange", linestyle=":",
-                     label=f"95th pct: {np.percentile(plain_gaps, 95):.1f}")
+    ax_plain.set_xlabel("Gap size (years)")
+    ax_plain.axvline(np.mean(plain_gaps_years), color="red", linestyle="--",
+                     label=f"Mean: {np.mean(plain_gaps_years):.1f}")
+    ax_plain.axvline(np.percentile(plain_gaps_years, 5), color="orange", linestyle=":",
+                     label=f"5th pct: {np.percentile(plain_gaps_years, 5):.1f}")
+    ax_plain.axvline(np.percentile(plain_gaps_years, 95), color="orange", linestyle=":",
+                     label=f"95th pct: {np.percentile(plain_gaps_years, 95):.1f}")
     ax_plain.legend(fontsize=7)
-    ax_plain.xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
-    ax_plain.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
+    # ax_plain.xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+    # ax_plain.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
 
     if savefig is not None:
         plt.savefig(savefig, dpi=150)
     plt.show()
 
-    even_5th = np.percentile(even_gaps, 5)
-    proportion = np.mean(plain_gaps < even_5th)
+    even_5th = np.percentile(even_gaps_years, 5)
+    proportion = np.mean(plain_gaps_years < even_5th)
     print(f"Proportion of plain gaps below 5th percentile of even gaps: {proportion:.3f}")
     
