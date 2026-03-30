@@ -134,7 +134,7 @@ def plot_rate(rjmcmc, tau, savefig="plots/rate_v_time.png"):
     plt.fill_between(t, low_90, high_90, alpha=0.2, color='blue', label=r'90% uncertainty')
     plt.fill_between(t, low_50, high_50, alpha=0.4, color='blue', label=r'50% uncertainty')
     plt.plot(t, mean_height_v_time, color = 'red', label = "Inferred mean")
-    plt.xlabel("Time (days)")
+    plt.xlabel("Time (days since first accident)")
     plt.ylabel("Accident rate")
     plt.title("Inferred Accident Rate")
     plt.legend()
@@ -142,68 +142,6 @@ def plot_rate(rjmcmc, tau, savefig="plots/rate_v_time.png"):
         plt.savefig(savefig)
     plt.show()      
 
-def plot_bacon(rjmcmc, tau):
-    model_chain = rjmcmc.chain
-    thinned_chain = model_chain[int(10*tau)::int(2*tau)] # discard 10tau and thin by 2tau
-    print(f"Number of samples after discarding and thinning: {len(thinned_chain)}")
 
-    height_v_times = [] # heights at different times
-
-    for i in tqdm(range(0, len(thinned_chain))):
-        model = thinned_chain[i]
-        k = (len(model) - 1) // 2
-
-        # k change points and k+1 heigths
-        change_points =  model[:k] # no plus 1 bc starts at 0 so exclusive of k is still k change points
-        heights = model[k:]
-        height_v_time = np.zeros(40550)
-        current = 0
-        next = 0
-        edges = np.concatenate([[0], change_points.astype(int), [40550]])
-        for j in range(0, len(edges) -1):
-            #  height between these two edges
-            height = heights[j]
-            delta = edges[j+1] - edges[j]
-            next = current + delta
-            height_v_time[current:next] = height
-            current = next
-        height_v_times.append(height_v_time)
-            
-
-    # plot the mean hight at each time
-    mean_height_v_time = np.mean(height_v_times, axis=0)
-    low_50, high_50 = np.percentile(height_v_times, [25,75], axis = 0)
-    low_90, high_90 = np.percentile(height_v_times, [5,95], axis = 0)
-
-    t = range(40550)
-    plt.figure(figsize=(10, 5), dpi=150)
-
-    plt.fill_between(
-        t, low_90, high_90,
-        alpha=0.25,
-        color='#F2D7C9',
-        label=r'90% uncertainty'
-    )
-
-    plt.fill_between(
-        t, low_50, high_50,
-        alpha=0.5,
-        color='#C97A63',
-        label=r'50% uncertainty'
-    )
-
-    plt.plot(
-        t, mean_height_v_time,
-        color='#8B4A3A',
-        linewidth=2,
-        label="Inferred mean"
-    )
-
-    plt.xlabel("Time (days)")
-    plt.ylabel("Accident rate")
-    plt.title("Inferred Accident Rate")
-    plt.legend()
-
-    plt.show()
             
             
