@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def generate_cumulative_accidents(data):
+def generate_cumulative_accidents(data: list):
     """
     Generates an array of cumulative accident counts over a period of 40,550 days.
 
@@ -40,7 +40,21 @@ def generate_cumulative_accidents(data):
         mean_rate = cumulative_accidents[-1] / 40550
     return cumulative_accidents, mean_rate
 
-def plot_cumulative_accidents(cumulative_accidents, mean_rate):
+def plot_cumulative_accidents(cumulative_accidents: list, mean_rate: float, savefig: str = "plots/cumulative_accidents.png"):
+    """
+    Plot the cumulative number of accidents over time with the mean rate
+    overlaid as a dashed line.
+
+    Parameters
+    ---
+    cumulative_accidents : np.ndarray
+        Cumulative count of accidents at each time step, shape (40550,).
+    mean_rate : float
+        Mean rate of accidents per time step, used to plot the expected
+        linear trend.
+    savefig : str or None, optional
+        File path to save the figure. If None, the figure is not saved.
+    """
     plt.figure(figsize=(7, 4))
     plt.plot(range(40550), cumulative_accidents, label="Cumulative Accidents")
     plt.plot(range(40550), mean_rate * np.arange(40550), linestyle="--", label="Mean Rate")
@@ -48,4 +62,6 @@ def plot_cumulative_accidents(cumulative_accidents, mean_rate):
     plt.xlabel("Time")
     plt.ylabel("Number of accidents")
     plt.legend()
+    if savefig:
+        plt.savefig(savefig)
     plt.show()
