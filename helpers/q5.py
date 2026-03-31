@@ -42,7 +42,7 @@ def autocorrelation_time(rjmcmc):
     return tau
 
 
-def k_post_trace(rjmcmc, discard, savefig="plots/k_post_trace.png"):
+def k_post_trace(rjmcmc, discard, first,savefig="plots/k_post_trace.png"):
     r"""
     Plot the trace of the model index k and its posterior distribution.
 
@@ -71,7 +71,7 @@ def k_post_trace(rjmcmc, discard, savefig="plots/k_post_trace.png"):
 
     fig, ax = plt.subplots(1, 2, sharey=True, gridspec_kw={'width_ratios': [2.5, 1]}, figsize=(10, 4), dpi=150)
 
-    ax[0].plot(ks)
+    ax[0].plot(ks[:first])
     ax[0].set_xlabel('Iteration')
     ax[0].set_ylabel('Model with k change points')
     ax[0].xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
@@ -141,7 +141,8 @@ def plot_rate(rjmcmc, tau, savefig="plots/rate_v_time.png"):
     plt.fill_between(t, low_90, high_90, alpha=0.2, color='blue', label=r'90% uncertainty')
     plt.fill_between(t, low_50, high_50, alpha=0.4, color='blue', label=r'50% uncertainty')
     plt.plot(t, mean_height_v_time, color = 'red', label = "Inferred mean")
-    plt.xlabel("Time (days since first accident)")
+    # plt.xlabel("Time (days since first accident)")
+    plt.xlabel("Time (Year)")
     plt.xticks(tick_positions, tick_labels, rotation=45)
     plt.ylabel("Accident rate")
     plt.title("Inferred Accident Rate")
