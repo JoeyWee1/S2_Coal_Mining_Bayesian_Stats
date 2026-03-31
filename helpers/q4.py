@@ -1,5 +1,6 @@
 from datetime import date
 
+from helpers.q2 import set_seed
 import numpy as np
 import emcee
 import matplotlib.pyplot as plt
@@ -25,10 +26,6 @@ def LnPost(theta, data):
           normalised by the Dirichlet B(2,2,...,2) function.
         - Heights: independent Gamma(alpha=1, beta=200) priors, giving a
           contribution of (k+1)*log(200) - 200*sum(heights).
-
-    The log-likelihood is that of an inhomogeneous Poisson process:
-        ln L = sum_j [ n_j * log(h_j) - h_j * l_j ]
-    where n_j is the number of accidents and l_j is the length of segment j.
 
     Parameters
     ----------
@@ -97,7 +94,7 @@ def LnPost(theta, data):
     return LnPost
 
 
-def generate_chain(k = 1, nwalkers = 32, steps = 10000, tf=2, cumulative_days=None):
+def generate_chain(k = 1, nwalkers = 32, steps = 10000, tf=2, cumulative_days=None, seed=1701):
     """
     Run an emcee ensemble MCMC sampler for the k change-point model M_k.
 
@@ -141,8 +138,8 @@ def generate_chain(k = 1, nwalkers = 32, steps = 10000, tf=2, cumulative_days=No
         Maximum autocorrelation time across all parameters, used as the
         base thinning interval.
     """
-
-    rng = np.random.default_rng(1701)
+    set_seed(seed)
+    rng = np.random.default_rng(seed)
 
     ndim = 2*k + 1 # k gaps (plus 1 implied) and k+1 heights
     
@@ -305,7 +302,7 @@ def gr_stat(n_chains=10, cumulative_days=None):
     """
     chains = []
     for i in range(n_chains): # we want to thin and flatten 
-        sampler, mean_frac, taus, mean_tau, tau = generate_chain(steps=10000, cumulative_days=cumulative_days) 
+        sampler, mean_frac, taus, mean_tau, tau = generate_chain(steps=10000, cumulative_days=cumulative_days, seed=1701 + i) # use a different seed for each chain
         chains.append(sampler.get_chain(flat=True, thin = 2*tau)) # get the samples from the output tuple of generate_chain
 
     # Truncate to minimum length

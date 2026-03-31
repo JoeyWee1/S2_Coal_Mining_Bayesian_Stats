@@ -99,6 +99,56 @@ def k_post_trace(rjmcmc, discard, first,savefig="plots/k_post_trace.png"):
     return k_map
 
 def plot_rate(rjmcmc, tau, savefig="plots/rate_v_time.png"):
+    """
+    Plot the posterior-predicted accident rate as a function of time.
+
+    This function constructs a piecewise-constant accident-rate trajectory
+    for each sampled RJMCMC model after burn-in removal and thinning. Each
+    sampled model is assumed to contain :math:`k` change points followed by
+    :math:`k+1` segment heights, so that the rate is constant between adjacent
+    change points. The collection of sampled trajectories is then used to
+    compute the posterior mean rate and pointwise 50\% and 90\% credible bands,
+    which are displayed as a function of calendar year.
+
+    The chain is processed by discarding the first :math:`10\tau` samples and
+    thinning by keeping every :math:`2\tau`-th sample, where :math:`\tau` is
+    the integrated autocorrelation time.
+
+    Parameters
+    ----------
+    rjmcmc : RJMCMC
+        A fitted RJMCMC object with a populated ``chain`` attribute. Each
+        element of ``rjmcmc.chain`` is assumed to represent one sampled model,
+        encoded as a one-dimensional array containing the change-point
+        locations followed by the segment heights.
+    tau : float or int
+        Integrated autocorrelation time used to define the burn-in and
+        thinning schedule. The first ``10 * tau`` samples are discarded and
+        the remaining chain is thinned by a factor of ``2 * tau``.
+    savefig : str or None, optional
+        Path at which to save the figure. If ``None`` or otherwise evaluates
+        to ``False``, the figure is not saved. Default is
+        ``"plots/rate_v_time.png"``.
+
+    Returns
+    -------
+    None
+        This function does not return a value. It displays the plot and,
+        optionally, saves it to disk.
+
+    Notes
+    -----
+    - The time axis is measured in days from 15 March 1851.
+    - The full observation window is assumed to have length 40550 days.
+    - Credible intervals are computed pointwise across the sampled
+      rate trajectories:
+      
+      - 50\% band: 25th to 75th percentile
+      - 90\% band: 5th to 95th percentile
+    - Change-point locations are cast to integers before constructing the
+      piecewise-constant trajectories.
+
+    """
     start_date = date(1851, 3, 15)
     tick_years = range(1850, 1970, 10)  # every 10 years
     tick_positions = [(date(y, 1, 1) - start_date).days for y in tick_years]

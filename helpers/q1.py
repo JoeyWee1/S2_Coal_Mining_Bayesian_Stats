@@ -26,10 +26,6 @@ def generate_cumulative_accidents(data: list):
     mean_rate: float
         The average rate of accidents per day over the entire period, calculated as
         the total number of accidents divided by 40,550 days.
-    years: int
-        The year corresponding to the last day in the data, calculated based on the
-        total number of days and starting from the year 1851.
-
     """
     cumulative_accidents = np.zeros(40550) 
     cumulative_accidents[0] = 1 # first accident occurs at time 0 (day 1)
@@ -58,7 +54,6 @@ def plot_cumulative_accidents(cumulative_accidents: list, mean_rate: float, save
     mean_rate : float
         Mean rate of accidents per time step, used to plot the expected
         linear trend.
- 
     savefig : str or None, optional
         File path to save the figure. If None, the figure is not saved.
     """
